@@ -94,6 +94,7 @@ ch_biotypes_header_multiqc   = file("$projectDir/assets/multiqc/biotypes_header.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+<<<<<<< HEAD
 //
 // MODULE: Loaded from modules/local/
 //
@@ -106,6 +107,34 @@ include { MULTIQC                            } from '../modules/local/multiqc'
 include { MULTIQC_CUSTOM_BIOTYPE             } from '../modules/local/multiqc_custom_biotype'
 include { MULTIQC_TSV_FROM_LIST as MULTIQC_TSV_FAIL_MAPPED  } from '../modules/local/multiqc_tsv_from_list'
 include { MULTIQC_TSV_FROM_LIST as MULTIQC_TSV_STRAND_CHECK } from '../modules/local/multiqc_tsv_from_list'
+=======
+// Don't overwrite global params.modules, create a copy instead and use that within the main script.
+def modules = params.modules.clone()
+
+def publish_genome_options = params.save_reference ? [publish_dir: 'genome']       : [publish_files: false]
+def publish_index_options  = params.save_reference ? [publish_dir: 'genome/index'] : [publish_files: false]
+
+def multiqc_options         = modules['multiqc']
+multiqc_options.args       += params.multiqc_title ? Utils.joinModuleArgs(["--title \"$params.multiqc_title\""]) : ''
+if (params.skip_alignment)  { multiqc_options['publish_dir'] = '' }
+
+def deseq2_qc_options                 = modules['deseq2_qc']
+deseq2_qc_options.args               += params.deseq2_vst ? Utils.joinModuleArgs(['--vst TRUE']) : ''
+def deseq2_qc_salmon_options          = deseq2_qc_options.clone()
+deseq2_qc_salmon_options.publish_dir  = "salmon/deseq2_qc"
+
+include { BEDTOOLS_GENOMECOV                 } from '../modules/local/bedtools_genomecov'          addParams( options: modules['bedtools_genomecov']                     )
+include { STRINGTIE_PREPDE                   } from '../modules/local/stringtie_prepde'            addParams( options: modules['stringtie_prepde']                       )
+include { DESEQ2_QC as DESEQ2_QC_STAR_SALMON } from '../modules/local/deseq2_qc'                   addParams( options: deseq2_qc_options, multiqc_label: 'star_salmon'   )
+include { DESEQ2_QC as DESEQ2_QC_RSEM        } from '../modules/local/deseq2_qc'                   addParams( options: deseq2_qc_options, multiqc_label: 'star_rsem'     )
+include { DESEQ2_QC as DESEQ2_QC_SALMON      } from '../modules/local/deseq2_qc'                   addParams( options: deseq2_qc_salmon_options, multiqc_label: 'salmon' )
+include { DUPRADAR                           } from '../modules/local/dupradar'                    addParams( options: modules['dupradar']                               )
+include { GET_SOFTWARE_VERSIONS              } from '../modules/local/get_software_versions'       addParams( options: [publish_files : ['tsv':'']]                      )
+include { MULTIQC                            } from '../modules/local/multiqc'                     addParams( options: multiqc_options                                   )
+include { MULTIQC_CUSTOM_BIOTYPE             } from '../modules/local/multiqc_custom_biotype'      addParams( options: modules['multiqc_custom_biotype']                 )
+include { MULTIQC_CUSTOM_FAIL_MAPPED         } from '../modules/local/multiqc_custom_fail_mapped'  addParams( options: [publish_files: false]                            )
+include { MULTIQC_CUSTOM_STRAND_CHECK        } from '../modules/local/multiqc_custom_strand_check' addParams( options: [publish_files: false]                            )
+>>>>>>> origin/towerp
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -246,6 +275,19 @@ workflow RNASEQ {
         .set { ch_filtered_reads }
         ch_versions = ch_versions.mix(BBMAP_BBSPLIT.out.versions.first())
     }
+
+    // Get minimum read length reported by FastQC and add to meta information
+    FASTQC_UMITOOLS_TRIMGALORE
+        .out
+        .reads
+        .join ( FASTQC_UMITOOLS_TRIMGALORE.out.fastqc_html, by: [0] )
+        .map {
+            meta, reads, reports ->
+                def report = meta.single_end ? reports : reports[0]
+                meta.read_length = WorkflowRnaseq.getFastqcReadLength(report)
+                return [ meta, reads ]
+        }
+        .set { ch_trimmed_reads }
 
     //
     // MODULE: Remove ribosomal RNA reads
@@ -516,6 +558,13 @@ workflow RNASEQ {
             PREPARE_GENOME.out.gtf
         )
         ch_versions = ch_versions.mix(STRINGTIE_STRINGTIE.out.versions.first())
+
+        if (!params.skip_stringtie_prepde) {
+            STRINGTIE_PREPDE (
+                STRINGTIE.out.transcript_gtf
+            )
+        }
+
     }
 
     //

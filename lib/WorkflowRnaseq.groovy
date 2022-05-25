@@ -131,6 +131,7 @@ class WorkflowRnaseq {
     }
 
     //
+<<<<<<< HEAD
     // Function to generate an error if contigs in genome fasta file > 512 Mbp
     //
     public static void checkMaxContigSize(fai_file, log) {
@@ -150,6 +151,20 @@ class WorkflowRnaseq {
                 System.exit(1)
             }
         }
+=======
+    // Function that parses read length from FastQC html report
+    //
+    public static Integer getFastqcReadLength(report) {
+        def read_length = 76
+        def pattern = /Sequence length<\/td><td>(.*?)</
+        report.eachLine { line ->
+            def matcher = line =~ pattern
+            if (matcher) {
+                read_length = matcher[0][1].tokenize('-')[0].toInteger()
+            }
+        }
+        return read_length
+>>>>>>> origin/towerp
     }
 
     //

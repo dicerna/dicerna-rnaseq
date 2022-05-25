@@ -78,6 +78,17 @@ Note, since the pipeline is now using Nextflow DSL2, each process will be run wi
 
 ### Enhancements & fixes
 
+* Added StringTie `prepDE.py` module to generate gene/transcript level counts
+
+### Parameters
+
+| Old parameter               | New parameter                  |
+|-----------------------------|--------------------------------|
+|                             | `--skip_stringtie_prepde`      |
+
+> **NB:** Parameter has been __updated__ if both old and new parameter information is present.
+> **NB:** Parameter has been __added__ if just the new parameter information is present.
+> **NB:** Parameter has been __removed__ if parameter information isn't present.
 - Port pipeline to the updated Nextflow DSL2 syntax adopted on nf-core/modules
   - Removed `--publish_dir_mode` as it is no longer required for the new syntax
 - Bump minimum Nextflow version from `21.04.0` -> `21.10.3`
